@@ -49,7 +49,7 @@ contract DecentralisedStableCoin is ERC20Burnable, Ownable {
         uint256 balance = balanceOf(msg.sender);
         if (_amount <= 0) {
             revert DencentralisedStableCoinError_MustBeGreaterThanZero();
-        } 
+        }
         if (_amount > balance) {
             revert DecentralisedStableCoinError_BurnAmountExceedsBalance();
         }
@@ -57,7 +57,7 @@ contract DecentralisedStableCoin is ERC20Burnable, Ownable {
     }
 
     // external means that it can be called from outside the contract
-    function mint(address _to, uint256 _amount) external onlyOwner returns (bool){
+    function mint(address _to, uint256 _amount) external onlyOwner returns (bool) {
         if (_to == address(0)) {
             // address(0) is the zero address, uninitialized address which no one has private key for.
             revert DecentralisedStableCoinError_NotZeroAddress();
