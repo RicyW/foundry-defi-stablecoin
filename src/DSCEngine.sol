@@ -59,6 +59,7 @@ contract DSCEngine is ReentrancyGuard {
     mapping(address user => mapping(address token => uint256 amount)) private s_collateralDesposited;
     mapping(address user => uint256 amountMintedDSC) private s_mintedDSC;
     DecentralisedStableCoin private immutable i_dsc;
+    address[] private s_collateralTokens; 
 
     //////////////////////////////////////////////////////////////
     ///////////////////       Event      /////////////////////////
@@ -92,6 +93,7 @@ contract DSCEngine is ReentrancyGuard {
         for (uint i = 0; i < tokenAddresses.length; i++) {
             // for example ETH/USD, BTC/USD, MKR/USD price feed
             s_priceFeeds[tokenAddresses[i]] = priceFeedAddresses[i];
+            s_collateralTokens.push(tokenAddresses[i]);
         }
         i_dsc = DecentralisedStableCoin(dscAddress);
     }
@@ -168,6 +170,9 @@ contract DSCEngine is ReentrancyGuard {
     //////////////////////////////////////////////////////////////
     ///////////////////Public & External View Functions///////////
     //////////////////////////////////////////////////////////////
-    function getTotalCollateralValueInUsd(address user) public view returns(uint256) {
-        
+    function getTotalCollateralValueInUsd(address user) public view returns(uint256){
+        //loop through the collateral tokens, get the amount they have deposit. map it to the price and get the value of each token in USD
+        for(uint256 i = 0; i<s_collateralTokens.length; i++){
+            address token = s_collateralTokens[i];
+        } 
     }
