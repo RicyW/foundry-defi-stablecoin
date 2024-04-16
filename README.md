@@ -9,6 +9,7 @@ This repo aims to develop a stablecoin and understand the key concepts of DeFi d
    1.ETH
    2.BTC
 
+This project also aims to familiarise myself with foundry.
 Foundry consists of:
 
 - **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
