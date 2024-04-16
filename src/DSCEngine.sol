@@ -54,6 +54,7 @@ contract DSCEngine is ReentrancyGuard {
     error DSCEngineError_NotAllowedToken();
     error DSCEngineError_TokenTransferFailed();
     error DSCEngineError_BreaksHealthFactor(uint256 healthFactor);
+    error DSCEngineError_MintFailed();
 
     //////////////////////////////////////////////////////////////
     ///////////////////State Variables////////////////////////////
@@ -146,7 +147,12 @@ contract DSCEngine is ReentrancyGuard {
     */
     function mintDSC(uint256 amountDscToMint) external moreThanZero(amountDscToMint) nonReentrant {
         s_mintedDSC[msg.sender] += amountDscToMint;
+        // if they minted too much: $150 DSC and $100 ETH
         _revertIfHealthFactorBelowThreshold(msg.sender);
+        bool minted = i_dsc.mint(msg.sender, amountDscToMint);
+        if (!minted) {
+            revert DSCEngineError_MintFailed();
+        }
     }
 
     function burnDSC() external {}
