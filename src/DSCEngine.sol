@@ -49,12 +49,12 @@ contract DSCEngine is ReentrancyGuard {
     //////////////////////////////////////////////////////////////
     ///////////////////    Error      ////////////////////////////
     //////////////////////////////////////////////////////////////
-    error DSCEngineError_MustBeGreaterThanZero(string reason);
-    error DSCEngineError_TokenAddressAndPriceFeedAddressMustMatch(string reason);
-    error DSCEngineError_NotAllowedToken(string reason);
-    error DSCEngineError_TokenTransferFailed(string reason);
-    error DSCEngineError_BreaksHealthFactor(uint256 healthFactor, string reason);
-    error DSCEngineError_MintFailed(string reason);
+    error DSCEngineError_MustBeGreaterThanZero();
+    error DSCEngineError_TokenAddressAndPriceFeedAddressMustMatch();
+    error DSCEngineError_NotAllowedToken();
+    error DSCEngineError_TokenTransferFailed();
+    error DSCEngineError_BreaksHealthFactor(uint256 healthFactor);
+    error DSCEngineError_MintFailed();
 
     //////////////////////////////////////////////////////////////
     ///////////////////State Variables////////////////////////////
@@ -81,14 +81,14 @@ contract DSCEngine is ReentrancyGuard {
 
     modifier moreThanZero(uint256 amount) {
         if (amount <= 0) {
-            revert DSCEngineError_MustBeGreaterThanZero("Amount must be greater than zero");
+            revert DSCEngineError_MustBeGreaterThanZero();
         }
         _;
     }
 
     modifier isAllowedToken(address token) {
         if (s_priceFeeds[token] == address(0)) {
-            revert DSCEngineError_NotAllowedToken("Token is not allowed");
+            revert DSCEngineError_NotAllowedToken();
         }
         _;
     }
@@ -98,7 +98,7 @@ contract DSCEngine is ReentrancyGuard {
     //////////////////////////////////////////////////////////////
     constructor(address[] memory tokenAddresses, address[] memory priceFeedAddresses, address dscAddress) {
         if (tokenAddresses.length != priceFeedAddresses.length) {
-            revert DSCEngineError_TokenTransferFailed("Token transfer failed");}
+            revert DSCEngineError_TokenTransferFailed();}
         for (uint i = 0; i < tokenAddresses.length; i++) {
             // for example ETH/USD, BTC/USD, MKR/USD price feed
             s_priceFeeds[tokenAddresses[i]] = priceFeedAddresses[i];
@@ -131,7 +131,7 @@ contract DSCEngine is ReentrancyGuard {
         emit CollateralDeposited(msg.sender, tokenCollateralAddress, amountCollatral);
         bool success = IERC20(tokenCollateralAddress).transferFrom(msg.sender, address(this), amountCollatral);
         if (!success) {
-            revert DSCEngineError_TokenTransferFailed("Token transfer failed");
+            revert DSCEngineError_TokenTransferFailed();
         }
     }
 
@@ -149,7 +149,7 @@ contract DSCEngine is ReentrancyGuard {
         _revertIfHealthFactorBelowThreshold(msg.sender);
         bool minted = i_dsc.mint(msg.sender, amountDscToMint);
         if (minted != true) {
-            revert DSCEngineError_MintFailed("Minting DSC failed");
+            revert DSCEngineError_MintFailed();
         }
     }
 
@@ -181,7 +181,7 @@ contract DSCEngine is ReentrancyGuard {
     function _revertIfHealthFactorBelowThreshold(address user) internal view {
         uint256 userHealthFactor = _healthFactor(user);
         if (userHealthFactor < MIN_HEALTH_FACTOR) {
-            revert DSCEngineError_BreaksHealthFactor(userHealthFactor, "Health factor is below threshold");
+            revert DSCEngineError_BreaksHealthFactor(userHealthFactor);
         }
     }
 
