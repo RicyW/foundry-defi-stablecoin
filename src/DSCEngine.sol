@@ -40,8 +40,8 @@
 pragma solidity ^0.8.18;
 
 import {DecentralisedStableCoin} from "./DecentralisedStableCoin.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 
@@ -49,12 +49,12 @@ contract DSCEngine is ReentrancyGuard {
     //////////////////////////////////////////////////////////////
     ///////////////////    Error      ////////////////////////////
     //////////////////////////////////////////////////////////////
-    error DSCEngineError_MustBeGreaterThanZero();
-    error DSCEngineError_TokenAddressAndPriceFeedAddressMustMatch();
-    error DSCEngineError_NotAllowedToken();
-    error DSCEngineError_TokenTransferFailed();
-    error DSCEngineError_BreaksHealthFactor(uint256 healthFactor);
-    error DSCEngineError_MintFailed();
+    error DSCEngineError_MustBeGreaterThanZero(string reason);
+    error DSCEngineError_TokenAddressAndPriceFeedAddressMustMatch(string reason);
+    error DSCEngineError_NotAllowedToken(string reason);
+    error DSCEngineError_TokenTransferFailed(string reason);
+    error DSCEngineError_BreaksHealthFactor(uint256 healthFactor, string reason);
+    error DSCEngineError_MintFailed(string reason);
 
     //////////////////////////////////////////////////////////////
     ///////////////////State Variables////////////////////////////
@@ -75,21 +75,20 @@ contract DSCEngine is ReentrancyGuard {
     ///////////////////       Event      /////////////////////////
     //////////////////////////////////////////////////////////////
     event CollateralDeposited(address indexed user, address indexed token, uint256 indexed amount);
-
     //////////////////////////////////////////////////////////////
     ///////////////////    Modifier      /////////////////////////
     //////////////////////////////////////////////////////////////
 
     modifier moreThanZero(uint256 amount) {
-        if (amount == 0) {
-            revert DSCEngineError_MustBeGreaterThanZero();
+        if (amount <= 0) {
+            revert DSCEngineError_MustBeGreaterThanZero("Amount must be greater than zero");
         }
         _;
     }
 
     modifier isAllowedToken(address token) {
         if (s_priceFeeds[token] == address(0)) {
-            revert DSCEngineError_NotAllowedToken();
+            revert DSCEngineError_NotAllowedToken("Token is not allowed");
         }
         _;
     }
@@ -99,14 +98,13 @@ contract DSCEngine is ReentrancyGuard {
     //////////////////////////////////////////////////////////////
     constructor(address[] memory tokenAddresses, address[] memory priceFeedAddresses, address dscAddress) {
         if (tokenAddresses.length != priceFeedAddresses.length) {
-            revert DSCEngineError_TokenAddressAndPriceFeedAddressMustMatch();}
+            revert DSCEngineError_TokenTransferFailed("Token transfer failed");}
         for (uint i = 0; i < tokenAddresses.length; i++) {
             // for example ETH/USD, BTC/USD, MKR/USD price feed
             s_priceFeeds[tokenAddresses[i]] = priceFeedAddresses[i];
             s_collateralTokens.push(tokenAddresses[i]);
         }
         i_dsc = DecentralisedStableCoin(dscAddress);
- 
     }
 
 
@@ -133,7 +131,7 @@ contract DSCEngine is ReentrancyGuard {
         emit CollateralDeposited(msg.sender, tokenCollateralAddress, amountCollatral);
         bool success = IERC20(tokenCollateralAddress).transferFrom(msg.sender, address(this), amountCollatral);
         if (!success) {
-            revert DSCEngineError_TokenTransferFailed();
+            revert DSCEngineError_TokenTransferFailed("Token transfer failed");
         }
     }
 
@@ -150,8 +148,8 @@ contract DSCEngine is ReentrancyGuard {
         // if they minted too much: $150 DSC and $100 ETH
         _revertIfHealthFactorBelowThreshold(msg.sender);
         bool minted = i_dsc.mint(msg.sender, amountDscToMint);
-        if (!minted) {
-            revert DSCEngineError_MintFailed();
+        if (minted != true) {
+            revert DSCEngineError_MintFailed("Minting DSC failed");
         }
     }
 
@@ -163,7 +161,7 @@ contract DSCEngine is ReentrancyGuard {
 
 
     //////////////////////////////////////////////////////////////
-    ///////////////////Internal View Functions////////////////////
+    ////////////Private/Internal View Functions///////////////////
     //////////////////////////////////////////////////////////////
     function _getTotalAmountMintedDSCAndTotalCollateralValue(address user) private view returns (uint256 totalAmountMintedDSC, uint256 totalCollateralValueInUsd) {
         totalAmountMintedDSC = s_mintedDSC[user];
@@ -174,7 +172,7 @@ contract DSCEngine is ReentrancyGuard {
     * Return how close the user is to being liquidated. If it is below 1, the user will be liquidated.
     */
     
-    function _healthFactor(address user) internal view returns (uint256) {
+    function _healthFactor(address user) private view returns (uint256) {
         (uint256 totalAmountMintedDSC, uint256 totalCollateralValueInUsd) = _getTotalAmountMintedDSCAndTotalCollateralValue(user);
         uint256 collateralAdjustedForThreshold = (totalCollateralValueInUsd * LIQUIDATION_PRECISION) / LIQUIDATION_THRESHOLD;
         return (collateralAdjustedForThreshold * PRECISION) / totalAmountMintedDSC;
@@ -183,7 +181,7 @@ contract DSCEngine is ReentrancyGuard {
     function _revertIfHealthFactorBelowThreshold(address user) internal view {
         uint256 userHealthFactor = _healthFactor(user);
         if (userHealthFactor < MIN_HEALTH_FACTOR) {
-            revert DSCEngineError_BreaksHealthFactor(userHealthFactor);
+            revert DSCEngineError_BreaksHealthFactor(userHealthFactor, "Health factor is below threshold");
         }
     }
 
@@ -202,7 +200,7 @@ contract DSCEngine is ReentrancyGuard {
 
     function getUsdValue(address token, uint256 amount) public view returns(uint256){
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
-        (,int256 price,,,) = priceFeed.latestRoundData();
+        (,int256 price,,,) = priceFeed.latestRoundData();    
         // 1ETH = 1000 USD
         // The returned value from chainlink will be 1000 * 1e8
         // 1e8 = 10^8 = 100000000
