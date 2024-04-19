@@ -8,7 +8,7 @@ import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
 contract HelperConfig is Script {
     struct NetworkConfig {
         address wethUsdPriceFeed;
-        address wbtcIsdPriceFeed;
+        address wbtcUsdPriceFeed;
         address weth;
         address wbtc;
         uint256 deploerKey;

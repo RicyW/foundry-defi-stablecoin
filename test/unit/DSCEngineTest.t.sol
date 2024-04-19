@@ -16,6 +16,7 @@ contract DSCEngineTest is Test {
     HelperConfig config;
     ERC20Mock wethToken;
     address ethUsdPriceFeed;
+    address btcUsdPriceFeed;
     address weth;
     address public USER = makeAddr("user");
     uint256 public constant AMOUNT_COLLATERAL = 10 ether; 
@@ -26,6 +27,19 @@ contract DSCEngineTest is Test {
         (dsc, dsce, config) = deployer.run();
         (ethUsdPriceFeed,, weth,,) = config.activeNetworkConfig();
         ERC20Mock(weth).mint(address(USER), STARTING_ERC20_BALANCE);
+    }
+    /////////////////////////////////////////
+    //////////Constrcutor Test //////////////
+    /////////////////////////////////////////
+    address[] public tokenAddresses;
+    address[] public priceFeedAddresses;
+    
+    function testRevertIfTokenLengthDoesntMatchPriceFeeds() public {
+        tokenAddresses.push(weth);
+        priceFeedAddresses.push(ethUsdPriceFeed);
+        priceFeedAddresses.push(btcUsdPriceFeed);
+        vm.expectRevert(DSCEngine.DSCEngineError_TokenAddressAndPriceFeedAddressMustMatch.selector);
+        new DSCEngine(tokenAddresses, priceFeedAddresses, address(dsc));
     }
 
     /////////////////////////////////////////
