@@ -51,7 +51,7 @@ contract DSCEngine is ReentrancyGuard {
     //////////////////////////////////////////////////////////////
     error DSCEngineError_MustBeGreaterThanZero();
     error DSCEngineError_TokenAddressAndPriceFeedAddressMustMatch();
-    error DSCEngineError_NotAllowedToken(address token);
+    error DSCEngineError_NotAllowedToken();
     error DSCEngineError_TokenTransferFailed();
     error DSCEngineError_BreaksHealthFactor(uint256 healthFactor);
     error DSCEngineError_MintFailed();
@@ -94,7 +94,7 @@ contract DSCEngine is ReentrancyGuard {
 
     modifier isAllowedToken(address token) {
         if (s_priceFeeds[token] == address(0)) {
-            revert DSCEngineError_NotAllowedToken(token);
+            revert DSCEngineError_NotAllowedToken();
         }
         _;
     }
@@ -276,6 +276,7 @@ contract DSCEngine is ReentrancyGuard {
     //////////////////////////////////////////////////////////////
     ///////////////////Public & External View Functions///////////
     //////////////////////////////////////////////////////////////
+    // this function is to see how much collateral the user has deposited and the value of the collateral in USD. This is used as part of _getTotalAmountMintedDSCAndTotalCollateralValue to know user account status
     function getTotalCollateralValueInUsd(address user) public view returns(uint256 totalCollateralValueInUsd){
         //loop through the collateral tokens, get the amount they have deposit. map it to the price and get the value of each token in USD
         for(uint256 i = 0; i<s_collateralTokens.length; i++){
@@ -286,20 +287,32 @@ contract DSCEngine is ReentrancyGuard {
         return totalCollateralValueInUsd;
     }
 
+    // this function is to get the value of the token in USD. So it is a subset of the above function: getTotalCollateralValueInUsd
     function getUsdValue(address token, uint256 amount) public view returns(uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
         (,int256 price,,,) = priceFeed.latestRoundData();    
         // 1ETH = 1000 USD
         // The returned value from chainlink will be 1000 * 1e8
         // 1e8 = 10^8 = 100000000
-        return (uint256(price) * ADDITIONAL_FEED_PRECISION * amount)/ PRECISION;
+        // @note I don't fully understand how the precision is tunned 
+        return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount)/ PRECISION;
     }
 
+    // this function is to get the amount of token from USD. The difference between this function and getTotalCollateralValueInUsd is that this function is used before depositing collateral. This function can be used to know how much of a specific token you can buy based on the market price. 
     function getTokenAmountFromUsd(address tokenColleralAddress, uint256 usdAmountInWei) public view returns(uint256) {
-        // 1. get price eth per token
-        //
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[tokenColleralAddress]);
         (,int256 price,,,) = priceFeed.latestRoundData();
-        return (usdAmountInWei * PRECISION)/ (uint256(price) * ADDITIONAL_FEED_PRECISION);
+        // first you figure out conversion between usd and wei
+        // then you know based on this usd you have and this price of the
+        // token, how much of the token you can buy
+        // so let usd in wei to be divided by the price of the token
+        return ((usdAmountInWei * PRECISION) / (uint256(price) * ADDITIONAL_FEED_PRECISION));
+    }
+
+    // this function is more like an overview of all assets in the user account. It is used to know the user account status. 
+    function getTotalAmountMintedDSCAndTotalCollateralValue(address user) external view returns(
+        uint256 totalAmountMintedDSC, 
+        uint256 totalCollateralValueInUsd) {
+        (totalAmountMintedDSC, totalCollateralValueInUsd) = _getTotalAmountMintedDSCAndTotalCollateralValue(user);
     }
 }

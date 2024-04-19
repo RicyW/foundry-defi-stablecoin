@@ -71,6 +71,35 @@ contract DSCEngineTest is Test {
         vm.expectRevert(DSCEngine.DSCEngineError_MustBeGreaterThanZero.selector);
         dsce.depositCollateral(weth, 0);
         vm.stopPrank();
+    }
 
+    function testRevertWithUnapprovedCollateral() public {
+        ERC20Mock ranToken = new ERC20Mock("RAN", "RAN", USER, AMOUNT_COLLATERAL);
+        vm.startPrank(USER);
+        vm.expectRevert(DSCEngine.DSCEngineError_NotAllowedToken.selector);
+        dsce.depositCollateral(address(ranToken), AMOUNT_COLLATERAL);
+        vm.stopPrank();
+    }
+
+    modifier depositCollateral() {
+        vm.startPrank(USER);
+        ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
+        dsce.depositCollateral(weth, AMOUNT_COLLATERAL);
+        vm.stopPrank();
+        _;
+    }
+
+
+    function testCanDepositCollateralAndGetAccountInfo () public depositCollateral {
+        // 1. check user status and see how much of DSC and collateral the xuser has, in this case we are testing deposit 
+        // collateral and get account info so the total DSC minted should be 0
+        // 2. since the usr is going to deposit collateral, then we need getTokenAmountFromUsd to know
+        // how much collateral in USD is going to be deposited
+        (uint256 totalDscMinted, uint collateralValueInUsd) = dsce.getTotalAmountMintedDSCAndTotalCollateralValue(USER);
+        // @note this line of code might need a bit more rethinking to fully understand it
+        uint256 expectedCollateralValueInUsd = dsce.getTokenAmountFromUsd(weth, collateralValueInUsd);
+        assertEq(totalDscMinted, 0);
+        // @note understand better why here AMOUNT_COLLATERAL is the benchmark
+        assertEq(AMOUNT_COLLATERAL, expectedCollateralValueInUsd);
     }
 }
