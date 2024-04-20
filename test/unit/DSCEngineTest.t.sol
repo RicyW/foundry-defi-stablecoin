@@ -21,6 +21,15 @@ contract DSCEngineTest is Test {
     address public USER = makeAddr("user");
     uint256 public constant AMOUNT_COLLATERAL = 10 ether; 
     uint256 public constant STARTING_ERC20_BALANCE = 10 ether; 
+    uint256 amountDscToMint = 100 ether;
+
+    modifier depositedCollateral() {
+        vm.startPrank(USER);
+        ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
+        dsce.depositCollateral(weth, AMOUNT_COLLATERAL);
+        vm.stopPrank();
+        _;
+    }
 
     function setUp() public {
         deployer = new DeployDSC();
@@ -81,25 +90,56 @@ contract DSCEngineTest is Test {
         vm.stopPrank();
     }
 
-    modifier depositCollateral() {
-        vm.startPrank(USER);
-        ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
-        dsce.depositCollateral(weth, AMOUNT_COLLATERAL);
-        vm.stopPrank();
-        _;
-    }
-
-
-    function testCanDepositCollateralAndGetAccountInfo () public depositCollateral {
+    function testCanDepositCollateralAndGetAccountInfo() public depositedCollateral {
         // 1. check user status and see how much of DSC and collateral the xuser has, in this case we are testing deposit 
         // collateral and get account info so the total DSC minted should be 0
         // 2. since the usr is going to deposit collateral, then we need getTokenAmountFromUsd to know
         // how much collateral in USD is going to be deposited
         (uint256 totalDscMinted, uint collateralValueInUsd) = dsce.getTotalAmountMintedDSCAndTotalCollateralValue(USER);
         // @note this line of code might need a bit more rethinking to fully understand it
-        uint256 expectedCollateralValueInUsd = dsce.getTokenAmountFromUsd(weth, collateralValueInUsd);
+        uint256 expectedDepositedAmount = dsce.getTokenAmountFromUsd(weth, collateralValueInUsd);
         assertEq(totalDscMinted, 0);
-        // @note understand better why here AMOUNT_COLLATERAL is the benchmark
-        assertEq(AMOUNT_COLLATERAL, expectedCollateralValueInUsd);
+        // @note understand better why here AMOUNT_COLLATERAL is the benchmark. video 3:09:33
+        assertEq(AMOUNT_COLLATERAL, expectedDepositedAmount);
     }
+
+    /////////////////////////////////////////
+    //////////// Mint DSC Test //////////////
+    /////////////////////////////////////////
+
+    function testRevertIfMintFailed() public depositedCollateral {
+
+    }
+
+    function testIfMintAmountIsZero() public depositedCollateral {
+        vm.startPrank(USER);
+        vm.expectRevert(DSCEngine.DSCEngineError_MustBeGreaterThanZero.selector);
+        dsce.mintDSC(0);
+        vm.stopPrank();
+    }
+
+    function testCanMintDSC() public depositedCollateral {
+        vm.startPrank(USER);
+        uint256 totalDscMinted = dsc.balanceOf(USER);
+        dsce.mintDSC(amountDscToMint); 
+        uint256 newTotalDscMinted = dsc.balanceOf(USER);
+        assertEq(newTotalDscMinted, (totalDscMinted+amountDscToMint));
+        vm.stopPrank();
+    }
+
+    function testRevertIfHealthFactorBelowThreshold() public depositedCollateral {
+        // know the price of the eth/USD
+        // know the amount of collateral deposited
+        // first figure out the max to mint
+        // then mint a number which is greater than the max to mint
+
+    }
+
+    
+
+    
+
+
 }
+
+    
