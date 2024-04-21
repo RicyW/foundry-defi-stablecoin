@@ -7,6 +7,7 @@ import {DecentralisedStableCoin} from "../../src/DecentralisedStableCoin.sol";
 import {DSCEngine} from "../../src/DSCEngine.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
+import { MockV3Aggregator } from "../mocks/MockV3Aggregator.sol";
 
 
 contract DSCEngineTest is Test {
@@ -127,11 +128,26 @@ contract DSCEngineTest is Test {
         vm.stopPrank();
     }
 
-    function testRevertIfHealthFactorBelowThreshold() public depositedCollateral {
-        // know the price of the eth/USD
-        // know the amount of collateral deposited
-        // first figure out the max to mint
+    function testRevertIfHealthFactorBelowThreshold() public view {
+        // this is applicable to both function mintDSC and depositCollateralandMintDSC
+        // because only when mintDSC is called, the health factor can be broken
+
+        // know the price of the eth/USD ✅
+        // know the amount of collateral deposited - this is one of assumptions✅
+        // first figure out the max to mint, it is supposed to be 200% overcollateralized
         // then mint a number which is greater than the max to mint
+        (, int256 price,,,) = MockV3Aggregator(ethUsdPriceFeed).latestRoundData();
+        correctedAmountCollateral = AMOUNT_COLLATERAL * int256(price) * dsce.getAdditionalFeedPrecision();
+
+
+    // Calculate the value of the collateral in USD
+        uint256 collateralValue =  / dsce.getPrecision();
+
+    // Calculate the maximum amount to mint based on a 200% overcollateralization requirement
+        uint256 maxAmountToMint = collateralValue / 2;
+
+
+
 
     }
 
