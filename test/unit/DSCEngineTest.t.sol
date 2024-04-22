@@ -23,11 +23,20 @@ contract DSCEngineTest is Test {
     uint256 public constant AMOUNT_COLLATERAL = 10 ether; 
     uint256 public constant STARTING_ERC20_BALANCE = 10 ether; 
     uint256 amountDscToMint = 100 ether;
+    uint256 amountDscToBurn = 99 ether;
 
     modifier depositedCollateral() {
         vm.startPrank(USER);
         ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
         dsce.depositCollateral(weth, AMOUNT_COLLATERAL);
+        vm.stopPrank();
+        _;
+    }
+
+    modifier depositedCollateralAndMintedDsc() {
+        vm.startPrank(USER);
+        ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
+        dsce.depositCollateralAndMintDSC(weth, AMOUNT_COLLATERAL, amountDscToMint);
         vm.stopPrank();
         _;
     }
@@ -107,7 +116,7 @@ contract DSCEngineTest is Test {
     /////////////////////////////////////////
     //////////// Mint DSC Test //////////////
     /////////////////////////////////////////
-
+    // @note this is not done yet
     function testRevertIfMintFailed() public depositedCollateral {
 
     }
@@ -128,6 +137,7 @@ contract DSCEngineTest is Test {
         vm.stopPrank();
     }
 
+    // @note this is not done yet
     function testRevertIfHealthFactorBelowThreshold() public view {
         // this is applicable to both function mintDSC and depositCollateralandMintDSC
         // because only when mintDSC is called, the health factor can be broken
@@ -136,20 +146,47 @@ contract DSCEngineTest is Test {
         // know the amount of collateral deposited - this is one of assumptions✅
         // first figure out the max to mint, it is supposed to be 200% overcollateralized
         // then mint a number which is greater than the max to mint
-        (, int256 price,,,) = MockV3Aggregator(ethUsdPriceFeed).latestRoundData();
-        correctedAmountCollateral = AMOUNT_COLLATERAL * int256(price) * dsce.getAdditionalFeedPrecision();
+        // (, int256 price,,,) = MockV3Aggregator(ethUsdPriceFeed).latestRoundData();
+        // correctedAmountCollateral = AMOUNT_COLLATERAL * int256(price) * dsce.getAdditionalFeedPrecision();
+    }   
+    /////////////////////////////////////////
+    //////////// Burn DSC Test //////////////
+    /////////////////////////////////////////
 
-
-    // Calculate the value of the collateral in USD
-        uint256 collateralValue =  / dsce.getPrecision();
-
-    // Calculate the maximum amount to mint based on a 200% overcollateralization requirement
-        uint256 maxAmountToMint = collateralValue / 2;
-
-
-
-
+    function testRevertIfBurnAmountIsZero() public {
+        vm.startPrank(USER);
+        vm.expectRevert(DSCEngine.DSCEngineError_MustBeGreaterThanZero.selector);
+        dsce.burnDSC(0);
+        vm.stopPrank();
     }
+
+    function testCantBurnMoreThanUserHas() public {
+        vm.prank(USER);
+        vm.expectRevert();
+        dsce.burnDSC(1);
+    }
+
+    function testCanBurnDSC() public depositedCollateralAndMintedDsc {
+        vm.startPrank(USER);
+        dsc.approve(address(dsce), amountDscToMint);
+        uint256 totalDscMinted = dsc.balanceOf(USER);
+        dsce.burnDSC(amountDscToBurn);
+        uint256 newTotalDscMinted = dsc.balanceOf(USER);
+        assertEq(newTotalDscMinted, (totalDscMinted-amountDscToBurn));
+        vm.stopPrank();
+    }
+
+    
+
+    // function _burnDSC(uint256 amountDscToBurn, address onBehalfOf, address dscFrom) private {
+    //     s_mintedDSC[onBehalfOf] -= amountDscToBurn;
+    //     //If the contract tried to burn the tokens directly from the user's account without transferring them first, the burn operation would fail because the contract doesn't own the tokens.
+    //     bool success = i_dsc.transferFrom(dscFrom, address(this),amountDscToBurn);
+    //     if (!success) {
+    //         revert DSCEngineError_DSCBurnFailed();
+    //     }
+    //     i_dsc.burn(amountDscToBurn);
+    // }
 
     
 
