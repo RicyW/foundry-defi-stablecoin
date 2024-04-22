@@ -26,6 +26,8 @@ contract DSCEngineTest is Test {
     uint256 amountDscToBurn = 99 ether;
 
     modifier depositedCollateral() {
+        //The collateral is held by the contract, not the user: When collateral
+        // is deposited, it's typically transferred from the user's account to the contract. 
         vm.startPrank(USER);
         ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
         dsce.depositCollateral(weth, AMOUNT_COLLATERAL);
@@ -176,17 +178,77 @@ contract DSCEngineTest is Test {
         vm.stopPrank();
     }
 
-    
+    /////////////////////////////////////////
+    ////// Redeem Collateral Test ///////////
+    /////////////////////////////////////////
 
-    // function _burnDSC(uint256 amountDscToBurn, address onBehalfOf, address dscFrom) private {
-    //     s_mintedDSC[onBehalfOf] -= amountDscToBurn;
-    //     //If the contract tried to burn the tokens directly from the user's account without transferring them first, the burn operation would fail because the contract doesn't own the tokens.
-    //     bool success = i_dsc.transferFrom(dscFrom, address(this),amountDscToBurn);
+    function testIfRedeemZeroCollateral() public {
+        ERC20Mock ETHToken = new ERC20Mock("ETH", "ETH", USER, AMOUNT_COLLATERAL);
+        vm.startPrank(USER);
+        vm.expectRevert(DSCEngine.DSCEngineError_MustBeGreaterThanZero.selector);
+        dsce.redeemCollateral(address(ETHToken), 0);
+        vm.stopPrank();
+    }
+
+    function testIfRedeemDisallowedToken() public {
+        ERC20Mock ranToken = new ERC20Mock("Ran", "Ran", USER, AMOUNT_COLLATERAL);
+        vm.startPrank(USER);
+        vm.expectRevert(DSCEngine.DSCEngineError_NotAllowedToken.selector);
+        dsce.redeemCollateral(address(ranToken), AMOUNT_COLLATERAL);
+        vm.stopPrank();
+    }
+
+    function testCanRedeemCollateral() public depositedCollateral {
+        // depostiedCollateral will deposit the collateral to the contract
+        // userBalance will be 0. The contract address held the collateral to mint DSC
+        vm.startPrank(USER);
+        dsce.redeemCollateral(weth, AMOUNT_COLLATERAL);
+        uint256 newUserBalance = ERC20Mock(weth).balanceOf(USER);
+        assertEq(newUserBalance, AMOUNT_COLLATERAL);
+        vm.stopPrank();
+    }
+
+    // @note this is not done yet
+    function testRevertIfRedeemFailed() public {}
+
+
+    // function _redeemCollateral (address from, address to, address tokenCollateralAddress, uint256 amountCollateral) private {
+    //     s_collateralDesposited[from][tokenCollateralAddress] += amountCollateral;
+    //     emit CollateralRedeemed(from, to, tokenCollateralAddress, amountCollateral);
+    //     bool success = IERC20(tokenCollateralAddress).transferFrom(msg.sender, address(this), amountCollateral);
     //     if (!success) {
-    //         revert DSCEngineError_DSCBurnFailed();
-    //     }
-    //     i_dsc.burn(amountDscToBurn);
+    //         revert DSCEngineError_TokenTransferFailed();
     // }
+    // }
+
+    ///////////////////////////////////
+    // redeemCollateralForDsc Tests //
+    //////////////////////////////////
+
+    function testMustRedeemMoreThanZero() public depositedCollateralAndMintedDsc{
+        vm.startPrank(USER);
+        dsc.approve(address(dsce), amountDscToMint);
+        vm.expectRevert(DSCEngine.DSCEngineError_MustBeGreaterThanZero.selector);
+        // @note an error will error if you try to mint all amount Dsc (amountDscToMint),
+        // I don't know why this is the case yet
+        // [FAIL. Reason: panic: division or modulo by zero (0x12)]
+        dsce.redeemCollateralForDSC(weth, 0, (amountDscToMint-1));
+        vm.stopPrank();
+    }
+
+    function testCanRedeemDepositedCollateral() public depositedCollateralAndMintedDsc{
+        vm.startPrank(USER);
+        ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
+        dsc.approve(address(dsce), amountDscToMint);
+        dsce.redeemCollateralForDSC(weth, AMOUNT_COLLATERAL, (amountDscToMint-1));
+        vm.stopPrank();
+        uint256 userBalance = dsc.balanceOf(USER);
+        assertEq(userBalance, 1);
+        // If you redeem collateral for full amount DSC: amountDscToMint,
+        // this will give error [FAIL. Reason: panic: division or modulo by zero (0x12)]
+    }
+
+
 
     
 

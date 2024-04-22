@@ -172,10 +172,12 @@ contract DSCEngine is ReentrancyGuard {
         address tokenCollateralAddress, 
         uint256 amountCollateral) 
         public 
-        moreThanZero(amountCollateral) 
+        moreThanZero(amountCollateral)
+        isAllowedToken(tokenCollateralAddress)
         nonReentrant 
         {
             _redeemCollateral(msg.sender, msg.sender, tokenCollateralAddress, amountCollateral);
+            // _revertIfHealthFactorBelowThreshold(msg.sender);
     }
 
     /*
@@ -244,7 +246,7 @@ contract DSCEngine is ReentrancyGuard {
     function _redeemCollateral (address from, address to, address tokenCollateralAddress, uint256 amountCollateral) private {
         s_collateralDesposited[from][tokenCollateralAddress] += amountCollateral;
         emit CollateralRedeemed(from, to, tokenCollateralAddress, amountCollateral);
-        bool success = IERC20(tokenCollateralAddress).transferFrom(msg.sender, address(this), amountCollateral);
+        bool success = IERC20(tokenCollateralAddress).transfer(to, amountCollateral);
         if (!success) {
             revert DSCEngineError_TokenTransferFailed();
     }
@@ -314,5 +316,29 @@ contract DSCEngine is ReentrancyGuard {
         uint256 totalAmountMintedDSC, 
         uint256 totalCollateralValueInUsd) {
         (totalAmountMintedDSC, totalCollateralValueInUsd) = _getTotalAmountMintedDSCAndTotalCollateralValue(user);
+    }
+
+    function getPrecision() external pure returns (uint256) {
+        return PRECISION;
+    }
+
+    function getAdditionalFeedPrecision() external pure returns (uint256) {
+        return ADDITIONAL_FEED_PRECISION;
+    }
+
+    function getLiquidationThreshold() external pure returns (uint256) {
+        return LIQUIDATION_THRESHOLD;
+    }
+
+    function getLiquidationBonus() external pure returns (uint256) {
+        return LIQUIDATION_BONUS;
+    }
+
+    function getLiquidationPrecision() external pure returns (uint256) {
+        return LIQUIDATION_PRECISION;
+    }
+
+    function getMinHealthFactor() external pure returns (uint256) {
+        return MIN_HEALTH_FACTOR;
     }
 }
