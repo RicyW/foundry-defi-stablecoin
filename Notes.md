@@ -1,32 +1,32 @@
 This document records how test is implemented and the coverage. The key functions are in DSCEngine. There are 17 functions:
 
-depositCollateralAndMintDSC
-depositCollateral[tested]
-redeemCollateralForDSC[tested]
-redeemCollateral[tested]
-mintDSC[tested]
-burnDSC[tested]
-liquidate[tested]
-getHealthFactor[tested]
-\_burnDSC[tested]
-\_redeemCollateral[tested]
-\_getTotalAmountMintedDSCAndTotalCollateralValue[tested]
-\_healthFactor[tested]
-\_revertIfHealthFactorBelowThreshold[tested]
-getTotalCollateralValueInUsd
-getUsdValuep[tested]
-getTokenAmountFromUsd[tested]
-getTotalAmountMintedDSCAndTotalCollateralValue[tested]
-error DSCEngineError_MustBeGreaterThanZero();[tested]
-error DSCEngineError_TokenAddressAndPriceFeedAddressMustMatch();[tested]
-error DSCEngineError_NotAllowedToken();[tested]
-error DSCEngineError_TokenTransferFailed();
-error DSCEngineError_BreaksHealthFactor(uint256 healthFactor);[tested]
-error DSCEngineError_MintFailed();
-error DSCEngineError_CollateralRedeemFailed();
-error DSCEngineError_DSCBurnFailed();
-error DSCEngineError_HealthFactorOk();[tested]
-error DSCEngineError_HealthFactorNotImproved();
+- depositCollateralAndMintDSC
+- depositCollateral[tested]
+- redeemCollateralForDSC[tested]
+- redeemCollateral[tested]
+- mintDSC[tested]
+- burnDSC[tested]
+- liquidate[tested]
+- getHealthFactor[tested]
+- \_burnDSC[tested]
+- \_redeemCollateral[tested]
+- \_getTotalAmountMintedDSCAndTotalCollateralValue[tested]
+- \_healthFactor[tested]
+- \_revertIfHealthFactorBelowThreshold[tested]
+- getTotalCollateralValueInUsd
+- getUsdValuep[tested]
+- getTokenAmountFromUsd[tested]
+- getTotalAmountMintedDSCAndTotalCollateralValue[tested]
+- error DSCEngineError_MustBeGreaterThanZero();[tested]
+- error DSCEngineError_TokenAddressAndPriceFeedAddressMustMatch();[tested]
+- error DSCEngineError_NotAllowedToken();[tested]
+- error DSCEngineError_TokenTransferFailed();
+- error DSCEngineError_BreaksHealthFactor(uint256 healthFactor);[tested]
+- error DSCEngineError_MintFailed();
+- error DSCEngineError_CollateralRedeemFailed();
+- error DSCEngineError_DSCBurnFailed();
+- error DSCEngineError_HealthFactorOk();[tested]
+- error DSCEngineError_HealthFactorNotImproved();
 
 | File                            | % Lines          | % Statements     | % Branches     | % Funcs        |
 | ------------------------------- | ---------------- | ---------------- | -------------- | -------------- |
