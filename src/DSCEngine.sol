@@ -39,6 +39,7 @@
 
 pragma solidity ^0.8.18;
 
+import {console} from "forge-std/Test.sol";
 import {DecentralisedStableCoin} from "./DecentralisedStableCoin.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -59,6 +60,7 @@ contract DSCEngine is ReentrancyGuard {
     error DSCEngineError_DSCBurnFailed();
     error DSCEngineError_HealthFactorOk();
     error DSCEngineError_HealthFactorNotImproved();
+
 
     //////////////////////////////////////////////////////////////
     ///////////////////State Variables////////////////////////////
@@ -177,7 +179,7 @@ contract DSCEngine is ReentrancyGuard {
         nonReentrant 
         {
             _redeemCollateral(msg.sender, msg.sender, tokenCollateralAddress, amountCollateral);
-            // _revertIfHealthFactorBelowThreshold(msg.sender);
+            _revertIfHealthFactorBelowThreshold(msg.sender);
     }
 
     /*
@@ -188,6 +190,7 @@ contract DSCEngine is ReentrancyGuard {
         s_mintedDSC[msg.sender] += amountDscToMint;
         // if they minted too much: $150 DSC and $100 ETH
         _revertIfHealthFactorBelowThreshold(msg.sender);
+        
         bool minted = i_dsc.mint(msg.sender, amountDscToMint);
         if (minted != true) {
             revert DSCEngineError_MintFailed();
@@ -209,6 +212,7 @@ contract DSCEngine is ReentrancyGuard {
     */
     function liquidate(address tokenCollateralAddress, address user, uint256 debtToCover) external moreThanZero(debtToCover) nonReentrant {
         uint256 startingUserHealthFactor = _healthFactor(user);
+        console.log("startingUserHealthFactor", startingUserHealthFactor);
         if (startingUserHealthFactor >= MIN_HEALTH_FACTOR) {
             revert DSCEngineError_HealthFactorOk();
         }
@@ -227,7 +231,16 @@ contract DSCEngine is ReentrancyGuard {
         _revertIfHealthFactorBelowThreshold(msg.sender);
     }
 
-    function getHealthFactor() external {}
+    function calculateHealthFactor(
+        uint256 totalDscMinted,
+        uint256 collateralValueInUsd
+    )
+        external
+        pure
+        returns (uint256)
+    {
+        return _calculateHealthFactor(totalDscMinted, collateralValueInUsd);
+    }
 
 
     //////////////////////////////////////////////////////////////
@@ -264,12 +277,25 @@ contract DSCEngine is ReentrancyGuard {
     
     function _healthFactor(address user) private view returns(uint256) {
         (uint256 totalAmountMintedDSC, uint256 totalCollateralValueInUsd) = _getTotalAmountMintedDSCAndTotalCollateralValue(user);
-        uint256 collateralAdjustedForThreshold = (totalCollateralValueInUsd * LIQUIDATION_PRECISION) / LIQUIDATION_THRESHOLD;
-        return (collateralAdjustedForThreshold * PRECISION) / totalAmountMintedDSC;
+        return _calculateHealthFactor(totalAmountMintedDSC, totalCollateralValueInUsd);
     }
-    
+
+    function _calculateHealthFactor(
+        uint256 totalDscMinted,
+        uint256 collateralValueInUsd
+    )
+        internal
+        pure
+        returns (uint256)
+    {
+        if (totalDscMinted == 0) return type(uint256).max;
+        uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
+        return (collateralAdjustedForThreshold * PRECISION) / totalDscMinted;
+    }
+
     function _revertIfHealthFactorBelowThreshold(address user) internal view {
         uint256 userHealthFactor = _healthFactor(user);
+        console.log("yes it hits here and userHealthFactor is: ", userHealthFactor);
         if (userHealthFactor < MIN_HEALTH_FACTOR) {
             revert DSCEngineError_BreaksHealthFactor(userHealthFactor);
         }
@@ -338,7 +364,27 @@ contract DSCEngine is ReentrancyGuard {
         return LIQUIDATION_PRECISION;
     }
 
+    function getCollateralBalanceOfUser(address user, address token) external view returns (uint256) {
+        return s_collateralDesposited[user][token];
+    }
+
     function getMinHealthFactor() external pure returns (uint256) {
         return MIN_HEALTH_FACTOR;
+    }
+
+    function getCollateralTokens() external view returns (address[] memory) {
+        return s_collateralTokens;
+    }
+
+    function getDsc() external view returns (address) {
+        return address(i_dsc);
+    }
+
+    function getCollateralTokenPriceFeed(address token) external view returns (address) {
+        return s_priceFeeds[token];
+    }
+
+    function getHealthFactor(address user) external view returns (uint256) {
+        return _healthFactor(user);
     }
 }
